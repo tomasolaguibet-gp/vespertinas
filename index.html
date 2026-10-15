@@ -1324,6 +1324,9 @@ input[type="date"], input[type="text"], select{
             <option value="all">Todas</option>
             <option value="pendiente">Sin revisar</option>
             <option value="revisada">Ya revisadas</option>
+            <option value="cat:Error de algoritmo">↳ Error de algoritmo</option>
+            <option value="cat:Invalidación correcta">↳ Inválida OK</option>
+            <option value="cat:Consulta">↳ Consulta</option>
           </select>
         </div>
 
@@ -1437,6 +1440,7 @@ input[type="date"], input[type="text"], select{
               </div>
             </div>
             <small id="metaVer">Cargá el Excel y tocá <b>Arrancar</b>.</small>
+            <div style="margin-top:8px"><button id="btnExportFiltradas" class="btn dark" type="button" title="Descarga en Excel las fotos que estás viendo, con su categoría">Exportar estas fotos a Excel</button></div>
           </div>
 
           <div class="resumenWrap" id="resumenWrap">
@@ -2334,6 +2338,10 @@ input[type="date"], input[type="text"], select{
         const yaRevisada = categorizations.has(r.caseKey);
         if (revision === "pendiente" && yaRevisada) return false;
         if (revision === "revisada" && !yaRevisada) return false;
+        if (revision.indexOf("cat:") === 0){
+          const c = categorizations.get(r.caseKey);
+          if (!c || c.category !== revision.slice(4)) return false;
+        }
       }
       // Always require photo url
       if (!r.foto) return false;
@@ -3164,7 +3172,9 @@ input[type="date"], input[type="text"], select{
     resumenGrid.appendChild(kpi(r.sinRevisar, "Sin revisar", T, r.sinRevisar ? "warn" : "ok",
       irA("0", "1", "pendiente"), vRev === "pendiente"));
     resumenGrid.appendChild(kpi(r.errorAlgoritmo, "Error de algoritmo", T, "bad",
-      irA("0", "1", "revisada"), vRev === "revisada"));
+      irA("0", "1", "cat:Error de algoritmo"), vRev === "cat:Error de algoritmo"));
+    resumenGrid.appendChild(kpi(r.correcta, "Inválida OK", T, "",
+      irA("0", "1", "cat:Invalidación correcta"), vRev === "cat:Invalidación correcta"));
     resumenGrid.appendChild(kpi(r.recuperadas, "Recuperadas", T, "ok",
       irA("1", "all", "revisada"), vEstado === "1" && vRev === "revisada"));
 
@@ -3803,6 +3813,34 @@ input[type="date"], input[type="text"], select{
   btnApply.addEventListener("click", ()=>{
     setView("ver");
   });
+  // Exporta exactamente lo que se ve con los filtros actuales
+  // (ej.: Revisión = Inválida OK -> todas las que categorizaste así).
+  el("btnExportFiltradas")?.addEventListener("click", ()=>{
+    if (!filteredRows.length){ alert("No hay fotos con los filtros actuales."); return; }
+    const filas = filteredRows.map(r => {
+      const c = categorizations.get(r.caseKey) || {};
+      const cat = c.category === "Invalidación correcta" ? "Inválida OK" : (c.category || "Sin revisar");
+      return {
+        "FECHA EJECUCION": (r.fecha || "").replace(/^(\d{4})-(\d{2})-(\d{2})$/, "$3/$2/$1"),
+        "DISTRIBUIDOR": (codigoDistribuidor(r.distri) || {}).codigo || r.distri || "",
+        "SUPERVISOR": r.supervisor || "",
+        "PROMOTOR": r.promotor || "",
+        "POC ID": r.poc || "",
+        "CLIENTE": r.cliente || "",
+        "ID TAREA": r.idTarea || "",
+        "DETALLE TAREA": r.tarea || "",
+        "LINK IMAGEN": r.foto || r.textoUrl || "",
+        "CATEGORIA": cat,
+        "REVISOR": c.revisor || ""
+      };
+    });
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(filas), "Fotos");
+    const sel = fRevision ? fRevision.options[fRevision.selectedIndex].text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9 ]/g, "").trim().replace(/\s+/g, "-") : "";
+    const distri = asText(ticketDistribuidor?.value) || "BASE";
+    XLSX.writeFile(wb, `fotos-${distri}-${sel || "filtradas"}-${todayYMD()}.xlsx`);
+  });
+
   btnViewCategorized.addEventListener("click", ()=>{
     document.querySelector(".casesCard")?.scrollIntoView({behavior:"smooth", block:"start"});
   });
