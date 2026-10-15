@@ -1253,6 +1253,42 @@ input[type="date"], input[type="text"], select{
   .ticketCommentField{min-width:100%;}
 }
 
+
+/* ===== Auditoría de justificadas ===== */
+.jStatus{margin:6px 0 14px;font-size:13px;font-weight:700;color:#64748B;}
+.jStatus.ok{color:#16A34A;}
+.jStatus.warn{color:#DC2626;}
+.jFilters{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:14px;}
+.jFilters .field{display:flex;flex-direction:column;min-width:150px;}
+.jFilters select{max-width:240px;}
+.jSecTitle{font-size:14px;font-weight:900;color:#0F172A;margin:18px 0 8px;}
+.jSecTitle small{font-size:11px;font-weight:700;color:#94A3B8;margin-left:6px;}
+.jChecks{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;}
+.jCheck{display:flex;flex-direction:column;justify-content:flex-start;align-items:flex-start;border:1px solid #E2E8F0;border-radius:14px;background:#fff;padding:12px 14px;text-align:left;cursor:pointer;font-family:inherit;transition:border-color .15s, box-shadow .15s;}
+.jCheck:hover{border-color:#94A3B8;box-shadow:0 4px 14px rgba(15,23,42,.07);}
+.jCheck.active{border-color:#0FA9E6;box-shadow:inset 0 0 0 1px #0FA9E6;}
+.jCheck .n{font-size:26px;font-weight:900;color:#DC2626;line-height:1;}
+.jCheck .n.zero{color:#16A34A;}
+.jCheck .n.s{color:#D97706;}
+.jCheck .lv{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.4px;border-radius:999px;padding:2px 8px;margin-bottom:8px;}
+.jCheck .lv.c{background:#FEE2E2;color:#B91C1C;}
+.jCheck .lv.s{background:#FEF3C7;color:#92400E;}
+.jTag.s{background:#FEF3C7;color:#92400E;}
+.jCheck .t{font-size:12px;font-weight:900;color:#0F172A;margin-top:6px;}
+.jCheck .d{font-size:11px;font-weight:600;color:#64748B;margin-top:4px;line-height:1.35;}
+.jTwo{display:grid;grid-template-columns:3fr 2fr;gap:16px;}
+@media (max-width:1000px){ .jTwo{grid-template-columns:1fr;} }
+.jScroll{max-height:380px;overflow:auto;border:1px solid #E2E8F0;border-radius:12px;}
+.jTable{width:100%;border-collapse:collapse;font-size:12px;}
+.jTable th{position:sticky;top:0;background:#F8FAFC;color:#64748B;font-weight:900;text-align:left;padding:8px 10px;border-bottom:1px solid #E2E8F0;white-space:nowrap;}
+.jTable td{padding:7px 10px;border-bottom:1px solid #F1F5F9;font-weight:700;color:#334155;vertical-align:top;}
+.jTable td.num,.jTable th.num{text-align:right;font-variant-numeric:tabular-nums;}
+.jTable tr.click{cursor:pointer;}
+.jTable tr.click:hover td{background:#F0F9FF;}
+.jTable .hi{color:#DC2626;font-weight:900;}
+.jCases{min-width:1100px;}
+.jTag{display:inline-block;background:#FEE2E2;color:#B91C1C;border-radius:999px;padding:2px 8px;font-size:10px;font-weight:900;margin:1px 3px 1px 0;white-space:nowrap;}
+.jTarea{max-width:340px;font-weight:600!important;}
 </style>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
@@ -1276,7 +1312,7 @@ input[type="date"], input[type="text"], select{
         <div class="badge" id="syncBadge" title="Estado de sincronización con la pestaña VALIDACIONES del Sheet"><span class="dot"></span><b>Sheet:</b> <span id="syncText">Sin conectar</span> <button id="btnSync" type="button" style="margin-left:8px;border:0;background:transparent;cursor:pointer;font-weight:900;font-size:13px;" title="Sincronizar ahora">⟳</button></div>
 
         <div class="field fileField">
-          <input id="file" type="file" accept=".xlsx,.xls" />
+          <input id="file" type="file" accept=".xlsx,.xls,.csv" multiple />
           <label class="btn dark fileButton" for="file">Cargar Excel</label>
           <div class="hint" id="fileHint">-</div>
         </div>
@@ -1412,6 +1448,7 @@ input[type="date"], input[type="text"], select{
       <button class="viewPill tab" data-view="ver">Ver fotos</button>
       <button class="viewPill tab" data-view="cliente">Por cliente</button>
       <button class="viewPill tab" data-view="evidenciar">Casos corregidos</button>
+      <button class="viewPill tab" data-view="justif">Auditoría justificadas</button>
     </div>
   </div>
 
@@ -1550,6 +1587,55 @@ input[type="date"], input[type="text"], select{
             </div>
           </div>
         </div>
+        <!-- Auditoría de justificadas -->
+        <div id="view_justif" class="hidden">
+          <div class="evidencePanel">
+            <div class="evidenceTop">
+              <div>
+                <div class="evidenceTitle">Auditoría de justificadas</div>
+                <div class="evidenceSub">Cargá los CSV de tareas del SharePoint (podés elegir los 3 juntos). Cada motivo se cruza con lo que pasó en la misma visita y en el mismo PDV para detectar justificaciones que no cierran.</div>
+              </div>
+              <div class="evidenceControls">
+                <input id="jFile" type="file" accept=".csv,.txt" multiple style="display:none" />
+                <label for="jFile" class="btn primary" style="cursor:pointer">Cargar CSV de tareas</label>
+                <button id="jExport" class="btn dark" type="button" disabled>Exportar casos filtrados</button>
+                <button id="jExportSup" class="btn dark" type="button" disabled title="Un Excel con una hoja por supervisor, solo con los casos con alerta">Excel por supervisor</button>
+              </div>
+            </div>
+            <div id="jStatus" class="jStatus">Todavía no cargaste archivos.</div>
+
+            <div id="jBody" class="hidden">
+              <div class="jFilters">
+                <div class="field"><div class="label">Distribuidor</div><select id="jfDistri"></select></div>
+                <div class="field"><div class="label">Supervisor</div><select id="jfSup"></select></div>
+                <div class="field"><div class="label">Promotor</div><select id="jfProm"></select></div>
+                <div class="field"><div class="label">Motivo</div><select id="jfMotivo"></select></div>
+                <div class="field"><div class="label">Alerta</div><select id="jfAlerta"></select></div>
+                <button id="jClear" class="btn ghost" type="button">Borrar filtros</button>
+              </div>
+
+              <div class="resumenGrid" id="jKpis"></div>
+
+              <div class="jSecTitle">Chequeos automáticos <small>Click en un chequeo = ver esos casos</small></div>
+              <div class="jChecks" id="jChecks"></div>
+
+              <div class="jTwo">
+                <div class="jBox">
+                  <div class="jSecTitle">Promotores <small>Ordenados por % de tareas justificadas · click = filtrar</small></div>
+                  <div class="jScroll"><table class="jTable" id="jRankProm"></table></div>
+                </div>
+                <div class="jBox">
+                  <div class="jSecTitle">Motivos <small>click = filtrar</small></div>
+                  <div class="jScroll"><table class="jTable" id="jRankMot"></table></div>
+                </div>
+              </div>
+
+              <div class="jSecTitle">Casos <small id="jCasosMeta"></small></div>
+              <div class="tableWrap"><table class="jTable jCases" id="jCases"></table></div>
+              <div style="text-align:center;margin-top:10px"><button id="jMore" class="btn dark hidden" type="button">Mostrar más</button></div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Right: Rankings column -->
@@ -1681,8 +1767,12 @@ input[type="date"], input[type="text"], select{
 
   const LS_BASE = "GP_BVV_REVAL_STATE_v1";
   // Una clave por distribuidor: lo revisado en JOEL no se mezcla con HAWAII.
+  // Distribuidor cuyas fotos están en pantalla (con varios Excel cargados,
+  // el selector puede cambiar antes de que se carguen los datos nuevos).
+  let distriCargado = "";
+  const excelPorDistri = new Map();   // código -> filas del Excel
   function lsKey(){
-    const d = asText(ticketDistribuidor?.value) || "SIN_DISTRI";
+    const d = distriCargado || asText(ticketDistribuidor?.value) || "SIN_DISTRI";
     return LS_BASE + "_" + d.replace(/[^A-Z0-9]+/gi, "_").toUpperCase();
   }
 
@@ -1993,6 +2083,8 @@ input[type="date"], input[type="text"], select{
   // --- State
   let rawRows = [];
   let filteredRows = [];
+  // La pestaña de Auditoría de justificadas busca fotos en el Excel cargado.
+  window.GP_getRawRows = () => rawRows;
   let currentView = "galeria";
   let modalList = [];
   let modalIndex = 0;
@@ -3680,7 +3772,8 @@ input[type="date"], input[type="text"], select{
     viewCliente.classList.toggle("hidden", v !== "cliente");
     viewGaleria.classList.toggle("hidden", v !== "galeria");
     viewEvidenciar.classList.toggle("hidden", v !== "evidenciar");
-    mainLayout.classList.toggle("evidenceMode", v === "evidenciar");
+    document.getElementById("view_justif")?.classList.toggle("hidden", v !== "justif");
+    mainLayout.classList.toggle("evidenceMode", v === "evidenciar" || v === "justif");
     if (v === "evidenciar") renderEvidenceView();
     applyAndRender(true);
   }
@@ -3728,85 +3821,127 @@ input[type="date"], input[type="text"], select{
 
   // --- Excel load
   fileInput.addEventListener("change", ()=>{
-    const f = fileInput.files?.[0];
-    if (!f){
+    const fs = [...(fileInput.files || [])];
+    if (!fs.length){
       fileHint.textContent = "—";
       btnStart.disabled = true;
       return;
     }
-    fileHint.textContent = f.name;
+    fileHint.textContent = fs.length === 1 ? fs[0].name : `${fs.length} archivos`;
     btnStart.disabled = false;
   });
 
+  // Muestra en el selector cuántas fotos hay de cada distribuidor cargado.
+  function marcarDistribuidoresCargados(){
+    if (!ticketDistribuidor) return;
+    [...ticketDistribuidor.options].forEach(o => {
+      if (!o.value) return;
+      const filas = excelPorDistri.get(o.value);
+      o.textContent = filas ? `${o.value} · ${filas.length.toLocaleString("es-AR")} filas` : o.value;
+    });
+  }
+
+  // Pone en pantalla las fotos de un distribuidor ya leído.
+  function cargarDistri(codigo){
+    const json = excelPorDistri.get(codigo) || [];
+    distriCargado = codigo;
+    if (ticketDistribuidor && codigo) ticketDistribuidor.value = codigo;
+    SYNC.desde = 0;
+    SYNC.distriCargado = "";
+
+    rawExcelRows = json;
+    rawRows = normalizeRows(json);
+    categorizations.clear();
+    selectedCaseKeys.clear();
+    evidenceItems.clear();
+    selectedEvidenceKeys.clear();
+    window.PLAN31_TICKET_ROWS = [];
+    clearFilters();
+    populateFilterOptions(rawRows);
+    autoSelectDistribuidor(rawRows);
+    const restored = restoreLocalState();
+    enableActions();
+    const invalidasEjecutadas = rawRows.filter(r => r.validada === 0 && r.completada === 1).length;
+    const otros = excelPorDistri.size > 1 ? ` · ${excelPorDistri.size} distribuidores cargados (cambiá en DISTRIBUIDOR TICKET)` : "";
+    setStatus(
+      `${codigo || "Excel"}: ${rawRows.length.toLocaleString("es")} filas con foto · ` +
+      `${invalidasEjecutadas.toLocaleString("es")} invalidadas con tarea ejecutada` +
+      (restored ? ` · ${restored} categorizaciones recuperadas` : "") + otros
+    );
+    applyAndRender();
+    renderCasesTable();
+    actualizarSyncBadge();
+    // Traemos lo que ya revisaron los demás.
+    traerValidaciones(false).then(n => {
+      if (n) setStatus(`${codigo}: ${n.toLocaleString("es")} casos ya revisados por el equipo (traídos del Sheet)` + otros);
+    });
+  }
+
   btnStart.addEventListener("click", async ()=>{
-    const f = fileInput.files?.[0];
-    if (!f) return;
-    setStatus("Leyendo Excel…");
+    const archivos = [...(fileInput.files || [])];
+    if (!archivos.length) return;
     try{
-      const buf = await f.arrayBuffer();
-      const wb = XLSX.read(buf, {type:"array", cellDates:true});
-      const sheetName = wb.SheetNames[0];
-      const ws = wb.Sheets[sheetName];
-      let json = XLSX.utils.sheet_to_json(ws, {defval:"", raw:true});
+      let json = [];
+      for (let i = 0; i < archivos.length; i++){
+        setStatus(`Leyendo ${archivos[i].name} (${i+1} de ${archivos.length})…`);
+        const buf = await archivos[i].arrayBuffer();
+        const wb = XLSX.read(buf, {type:"array", cellDates:true});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const filas = XLSX.utils.sheet_to_json(ws, {defval:"", raw:true});
+        for (const fila of filas) json.push(fila);
+      }
       json.forEach(completarSucursal);
 
-      // El export puede venir con los 10 distribuidores juntos (60.000+ filas).
-      // Recortamos ANTES de normalizar: cada líder trabaja sobre lo suyo y el
-      // navegador nunca ve el resto.
-      const presentes = {};
+      // Agrupamos por distribuidor: cada uno se revisa por separado y se
+      // cambia desde el selector DISTRIBUIDOR TICKET sin volver a cargar.
+      excelPorDistri.clear();
+      let sinDistri = 0;
       json.forEach(f => {
         const d = codigoDistribuidor(f["Distri/Directa"]);
-        if (d) presentes[d.codigo] = (presentes[d.codigo] || 0) + 1;
+        if (!d){ sinDistri++; return; }
+        if (!excelPorDistri.has(d.codigo)) excelPorDistri.set(d.codigo, []);
+        excelPorDistri.get(d.codigo).push(f);
       });
-      const codigos = Object.keys(presentes);
+      json = null;
+      marcarDistribuidoresCargados();
 
-      if (codigos.length > 1){
-        const elegido = await pedirDistribuidor(presentes);
-        if (!elegido){ setStatus("Carga cancelada."); return; }
-        json = json.filter(f => {
-          const d = codigoDistribuidor(f["Distri/Directa"]);
-          return d && d.codigo === elegido;
-        });
-        if (ticketDistribuidor) ticketDistribuidor.value = elegido;
-      } else if (codigos.length === 1 && ticketDistribuidor){
-        ticketDistribuidor.value = codigos[0];
+      if (!excelPorDistri.size){
+        alert("No pude reconocer el distribuidor en la columna 'Distri/Directa'. Revisá que sean archivos de BEES Vision de Grupo Panella.");
+        setStatus("No se reconoció ningún distribuidor.");
+        return;
       }
-
-      if (!codigos.length){
-        alert("No pude reconocer el distribuidor en la columna 'Distri/Directa' de este archivo. Elegilo a mano antes de cargar al Sheet.");
-        if (ticketDistribuidor) ticketDistribuidor.value = "";
+      const presentes = {};
+      excelPorDistri.forEach((v, k) => presentes[k] = v.length);
+      const actual = asText(ticketDistribuidor?.value);
+      let elegido = excelPorDistri.has(actual) ? actual : "";
+      if (!elegido){
+        if (excelPorDistri.size === 1) elegido = [...excelPorDistri.keys()][0];
+        else {
+          elegido = await pedirDistribuidor(presentes);
+          if (!elegido){ setStatus("Carga cancelada."); return; }
+        }
       }
-      const codigoActivo = asText(ticketDistribuidor?.value);
-      if (codigoActivo && ticketReferente && !asText(ticketReferente.value)){
-        ticketReferente.value = liderDe(codigoActivo);
-      }
-
-      rawExcelRows = json;
-      rawRows = normalizeRows(json);
-      categorizations.clear();
-      selectedCaseKeys.clear();
-      evidenceItems.clear();
-      selectedEvidenceKeys.clear();
-      populateFilterOptions(rawRows);
-      autoSelectDistribuidor(rawRows);
-      const restored = restoreLocalState();
-      enableActions();
-      const invalidasEjecutadas = rawRows.filter(r => r.validada === 0 && r.completada === 1).length;
-      setStatus(
-        `Excel cargado: ${rawRows.length.toLocaleString("es")} filas con foto · ` +
-        `${invalidasEjecutadas.toLocaleString("es")} invalidadas con tarea ejecutada` +
-        (restored ? ` · ${restored} categorizaciones recuperadas` : "")
-      );
-      applyAndRender();
-      actualizarSyncBadge();
-      // Traemos lo que ya revisaron los demás.
-      traerValidaciones(false).then(n => {
-        if (n) setStatus(`${n.toLocaleString("es")} casos ya revisados por el equipo (traídos del Sheet)`);
-      });
+      if (sinDistri) console.warn(sinDistri + " filas sin distribuidor reconocido quedaron afuera.");
+      cargarDistri(elegido);
     }catch(err){
       console.error(err);
       setStatus("Error leyendo el Excel");
       alert("No pude leer el Excel. Probá guardándolo de nuevo y volvé a cargarlo.");
+    }
+  });
+
+  // Al cambiar de distribuidor, si sus fotos ya están leídas, se muestran.
+  // (El listener original guarda antes la revisión del distribuidor anterior.)
+  ticketDistribuidor?.addEventListener("change", () => {
+    const nuevo = asText(ticketDistribuidor.value);
+    if (!excelPorDistri.size || nuevo === distriCargado) return;
+    if (excelPorDistri.has(nuevo)){
+      saveLocalState();            // guarda la revisión del distribuidor anterior
+      flushValidaciones(false);    // y manda al Sheet lo pendiente
+      cargarDistri(nuevo);
+    } else if (nuevo) {
+      setStatus(`No hay fotos de ${nuevo} en los archivos cargados. Seguís viendo ${distriCargado}.`);
+      ticketDistribuidor.value = distriCargado;   // que el selector no mienta
     }
   });
 
@@ -4193,5 +4328,410 @@ input[type="date"], input[type="text"], select{
   setStatus("Esperando Excel");
 })();
 </script>
+<script>
+/* =====================================================================
+   AUDITORÍA DE JUSTIFICADAS
+   Lee los CSV de tareas del SharePoint (formato DIA, CLIENTE_ID, PROMOTOR,
+   SUPERVISOR, JUSTIFICACION, ...), se queda solo con Grupo Panella y cruza
+   cada motivo con lo que pasó en la misma visita / mismo PDV.
+   ===================================================================== */
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const PAPA_URL = "https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js";
+
+  // Código de depósito (COD_DDC_WH) -> distribuidor / sucursal de Grupo Panella
+  const DISTRI_POR_CODIGO = {
+    "149698": "PANELLA", "364224": "JEP", "47686": "QUILPE", "441227": "GLOBAL PACK",
+    "115233": "TINOGASTA", "534973": "LA BANDA", "535082": "FRIAS",
+    "513461": "AÑATUYA", "449491": "SANTA MARIA"
+  };
+  // Respaldo por nombre, por si aparece un código nuevo de Grupo Panella.
+  function distriPorNombre(nombre, region){
+    const t = String(nombre || "").toUpperCase();
+    if (t.indexOf("JOSE ESTEBAN PANELLA") > -1) return "JEP";
+    if (t.indexOf("PANELLA") > -1) return "PANELLA";
+    if (t.indexOf("GLOBAL PACK") > -1) return "GLOBAL PACK";
+    if (t.indexOf("QUILPE DISTRIBUCIONES") > -1) return region === "CENTRAL" ? "TINOGASTA" : "QUILPE DISTRIBUCIONES";
+    if (t.indexOf("QUILPE") > -1) return "QUILPE";
+    return null;
+  }
+
+  // Chequeos: [clave, título, descripción]
+  const CHECKS_RAW = [
+    ["RESP", "Sin responsable, pero completó otras tareas",
+      "Motivo 'Responsable / dueño no disponible' y en esa MISMA visita el promotor completó otras tareas. Señal, no prueba: hay tareas que no necesitan al dueño."],
+    ["INAD", "Tarea inadecuada, pero se hizo otro día",
+      "Motivo 'Tarea inadecuada para este PDV' y esa MISMA tarea se completó en ese PDV otro día."],
+    ["PROD", "Sin producto/afiche, pero se hizo otro día",
+      "Motivo 'Producto/Afiche no disponible' y esa MISMA tarea se completó en ese PDV otro día."],
+    ["DEF", "Cerrado definitivo, pero siguió operando",
+      "Motivo 'PDV cerrado definitivo' y en días posteriores se completaron tareas en ese PDV."],
+    ["RUTA", "Fuera de ruta, pero tiene tareas hechas",
+      "Motivo 'no pertenece a la ruta' y en el período se completaron tareas en ese PDV."],
+    ["VINV", "Justificada con visita inválida",
+      "La visita en la que se justificó figura como NO válida (VISITA_VALIDA = false)."],
+    ["REP", "PDV justificado 3 días o más",
+      "El PDV tiene justificaciones en 3 o más días distintos del período."]
+  ];
+  const ORDEN = ["INAD", "PROD", "DEF", "RUTA", "RESP", "VINV", "REP"];
+  const CHECKS = ORDEN.map(k => CHECKS_RAW.find(c => c[0] === k));
+  const CHECK_LBL = Object.fromEntries(CHECKS.map(c => [c[0], c[1]]));
+  // Contradicción = el dato desmiente el motivo. Señal = vale la pena mirarlo, no prueba nada solo.
+  const FUERTES = ["INAD", "PROD", "DEF", "RUTA"];
+  const nivel = c => c.alertas.some(a => FUERTES.indexOf(a) > -1) ? "CONTRADICCION" : (c.alertas.length ? "SENAL" : "");
+
+  const S = {
+    loaded: false,
+    files: [],
+    stats: new Map(),   // promotor -> {distri, sup, tareas, inval, just}
+    casos: [],          // justificadas con sus alertas
+    totalTareas: 0, totalInval: 0,
+    diasMin: "", diasMax: "",
+    shown: 200
+  };
+
+  function setStatus(txt, tipo){
+    const el = $("jStatus"); if (!el) return;
+    el.textContent = txt; el.className = "jStatus" + (tipo ? " " + tipo : "");
+  }
+  const fmtDia = d => (d && d.length === 8) ? d.slice(6,8) + "/" + d.slice(4,6) + "/" + d.slice(0,4) : (d || "");
+  const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const pct = (a, b) => b ? (a / b * 100) : 0;
+  const pctTxt = (a, b) => b ? pct(a, b).toFixed(1).replace(".", ",") + "%" : "—";
+  const num = n => String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+
+  function cargarPapa(){
+    if (window.Papa) return Promise.resolve();
+    return new Promise((res, rej) => {
+      const s = document.createElement("script");
+      s.src = PAPA_URL; s.onload = () => res(); s.onerror = () => rej(new Error("No pude cargar el lector de CSV (sin internet?)"));
+      document.head.appendChild(s);
+    });
+  }
+
+  // ---------- Lectura ----------
+  async function cargarArchivos(fileList){
+    const files = [...fileList];
+    if (!files.length) return;
+    try { await cargarPapa(); } catch (e) { setStatus(e.message, "warn"); return; }
+
+    // Estructuras de cruce
+    const visitComp = new Map();   // prom|cli|dia -> tareas completadas en la visita
+    const tareaCompDias = new Map(); // cli|tarea -> Set(dias completada)
+    const pocUltComp = new Map();  // cli -> último día con tarea completada
+    const stats = new Map();
+    const justif = [];
+    let total = 0, inval = 0, leidas = 0, diasMin = "99999999", diasMax = "";
+    let faltanCols = null;
+
+    for (let i = 0; i < files.length; i++){
+      const f = files[i];
+      await new Promise((resolve) => {
+        Papa.parse(f, {
+          header: true, skipEmptyLines: true,
+          chunk: (res) => {
+            if (faltanCols === null){
+              const cols = res.meta.fields || [];
+              const req = ["DIA","CLIENTE_ID","PROMOTOR","COD_DDC_WH","TAREAS_JUSTIFICADAS","JUSTIFICACION","TAREAS_COMPLETADAS","TAREAS_VALIDADAS","TAREA"];
+              faltanCols = req.filter(c => cols.indexOf(c) === -1);
+            }
+            for (const r of res.data){
+              leidas++;
+              const distri = DISTRI_POR_CODIGO[r.COD_DDC_WH] || distriPorNombre(r.DESC_DDC_WH, r.DESC_REGION);
+              if (!distri) continue;
+              total++;
+              const dia = r.DIA, cli = r.CLIENTE_ID, prom = r.PROMOTOR || "(sin promotor)";
+              if (dia < diasMin) diasMin = dia;
+              if (dia > diasMax) diasMax = dia;
+              const comp = r.TAREAS_COMPLETADAS === "1";
+              const valid = Number(r.TAREAS_VALIDADAS) > 0;
+              const just = r.TAREAS_JUSTIFICADAS === "1";
+              if (!valid) inval++;
+
+              let st = stats.get(prom);
+              if (!st){ st = { distri, sup: r.SUPERVISOR || "", tareas: 0, inval: 0, just: 0 }; stats.set(prom, st); }
+              st.tareas++; if (!valid) st.inval++; if (just) st.just++;
+
+              if (comp){
+                const kv = prom + "|" + cli + "|" + dia;
+                visitComp.set(kv, (visitComp.get(kv) || 0) + 1);
+                const kt = cli + "|" + r.TAREA;
+                let set = tareaCompDias.get(kt); if (!set){ set = new Set(); tareaCompDias.set(kt, set); }
+                set.add(dia);
+                if (!pocUltComp.has(cli) || pocUltComp.get(cli) < dia) pocUltComp.set(cli, dia);
+              }
+              if (just){
+                justif.push({
+                  dia, cli, prom, distri,
+                  region: r.DESC_REGION || "",
+                  sup: r.SUPERVISOR || "",
+                  jdv: r.JDV || "",
+                  tarea: r.TAREA || "",
+                  pilar: r.PILAR || "",
+                  motivo: (r.JUSTIFICACION || "").trim().replace(/\.$/, ""),
+                  tareaId: r.TAREA_ID || "",
+                  visitaValida: String(r.VISITA_VALIDA).toLowerCase() !== "false"
+                });
+              }
+            }
+            setStatus(`Leyendo ${f.name} (${i+1} de ${files.length})… ${num(leidas)} filas · ${num(total)} de Grupo Panella`);
+          },
+          complete: () => resolve(),
+          error: (err) => { setStatus("Error leyendo " + f.name + ": " + err.message, "warn"); resolve(); }
+        });
+      });
+    }
+
+    if (faltanCols && faltanCols.length){
+      setStatus("Este archivo no tiene el formato esperado. Faltan columnas: " + faltanCols.join(", "), "warn");
+      return;
+    }
+    if (!total){
+      setStatus("No encontré filas de Grupo Panella en los archivos cargados.", "warn");
+      return;
+    }
+
+    // ---------- Chequeos ----------
+    const diasJustPoc = new Map();
+    justif.forEach(c => {
+      let s = diasJustPoc.get(c.cli); if (!s){ s = new Set(); diasJustPoc.set(c.cli, s); }
+      s.add(c.dia);
+    });
+    justif.forEach(c => {
+      const m = c.motivo.toLowerCase();
+      const al = [];
+      if (/responsable|due[ñn]o/.test(m) && (visitComp.get(c.prom + "|" + c.cli + "|" + c.dia) || 0) > 0) al.push("RESP");
+      const otrosDias = () => { const s = tareaCompDias.get(c.cli + "|" + c.tarea); return !!s && [...s].some(d => d !== c.dia); };
+      if (/tarea inadecuada/.test(m) && otrosDias()) al.push("INAD");
+      if (/producto|afiche/.test(m) && /no disponible/.test(m) && otrosDias()) al.push("PROD");
+      if (/cerrado definitiv/.test(m) && (pocUltComp.get(c.cli) || "") > c.dia) al.push("DEF");
+      if (/ruta/.test(m) && pocUltComp.has(c.cli)) al.push("RUTA");
+      if (!c.visitaValida) al.push("VINV");
+      if ((diasJustPoc.get(c.cli) || new Set()).size >= 3) al.push("REP");
+      c.alertas = al;
+    });
+    const peso = c => (nivel(c) === "CONTRADICCION" ? 100 : 0) + c.alertas.length;
+    justif.sort((a, b) => peso(b) - peso(a) || (b.dia > a.dia ? 1 : b.dia < a.dia ? -1 : 0));
+
+    Object.assign(S, {
+      loaded: true, files: files.map(f => f.name), stats, casos: justif,
+      totalTareas: total, totalInval: inval, diasMin, diasMax, shown: 200
+    });
+    llenarFiltros();
+    $("jBody").classList.remove("hidden");
+    $("jExport").disabled = false;
+    $("jExportSup").disabled = false;
+    setStatus(`${files.length} archivo(s) · ${num(total)} tareas de Grupo Panella · del ${fmtDia(diasMin)} al ${fmtDia(diasMax)}`, "ok");
+    render();
+  }
+
+  // ---------- Filtros ----------
+  function opciones(sel, valores, todos){
+    const prev = sel.value;
+    sel.innerHTML = `<option value="">${todos}</option>` + valores.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join("");
+    if (valores.indexOf(prev) > -1) sel.value = prev;
+  }
+  const uniq = arr => [...new Set(arr.filter(Boolean))].sort((a, b) => a.localeCompare(b, "es"));
+
+  function llenarFiltros(){
+    const f = filtros();
+    const base = S.casos.filter(c => !f.distri || c.distri === f.distri);
+    opciones($("jfDistri"), uniq([...S.stats.values()].map(s => s.distri)), "Todos");
+    opciones($("jfSup"), uniq(base.map(c => c.sup)), "Todos");
+    const base2 = base.filter(c => !f.sup || c.sup === f.sup);
+    opciones($("jfProm"), uniq(base2.map(c => c.prom)), "Todos");
+    opciones($("jfMotivo"), uniq(S.casos.map(c => c.motivo)), "Todos");
+    const a = $("jfAlerta"), prev = a.value;
+    a.innerHTML = `<option value="">Todas las justificadas</option><option value="CONTRADICCION">Contradicciones</option><option value="SENAL">Solo señales</option><option value="ANY">Con alguna alerta</option><option value="NONE">Sin alertas</option>` +
+      CHECKS.map(c => `<option value="${c[0]}">${esc(c[1])}</option>`).join("");
+    a.value = prev;
+  }
+  function filtros(){
+    return {
+      distri: $("jfDistri")?.value || "", sup: $("jfSup")?.value || "",
+      prom: $("jfProm")?.value || "", motivo: $("jfMotivo")?.value || "",
+      alerta: $("jfAlerta")?.value || ""
+    };
+  }
+  function pasaBase(c, f){
+    return (!f.distri || c.distri === f.distri) && (!f.sup || c.sup === f.sup) &&
+           (!f.prom || c.prom === f.prom) && (!f.motivo || c.motivo === f.motivo);
+  }
+  function pasaAlerta(c, a){
+    if (!a) return true;
+    if (a === "ANY") return c.alertas.length > 0;
+    if (a === "NONE") return c.alertas.length === 0;
+    if (a === "CONTRADICCION" || a === "SENAL") return nivel(c) === a;
+    return c.alertas.indexOf(a) > -1;
+  }
+  function casosFiltrados(){
+    const f = filtros();
+    return S.casos.filter(c => pasaBase(c, f) && pasaAlerta(c, f.alerta));
+  }
+
+  // ---------- Render ----------
+  function render(){
+    if (!S.loaded) return;
+    const f = filtros();
+    const base = S.casos.filter(c => pasaBase(c, f));
+    const promStats = [...S.stats.entries()].filter(([p, s]) =>
+      (!f.distri || s.distri === f.distri) && (!f.sup || s.sup === f.sup) && (!f.prom || p === f.prom));
+    const tareas = promStats.reduce((a, [, s]) => a + s.tareas, 0);
+    const inval = promStats.reduce((a, [, s]) => a + s.inval, 0);
+    const conAlerta = base.filter(c => c.alertas.length).length;
+    const contra = base.filter(c => nivel(c) === "CONTRADICCION").length;
+    const senal = conAlerta - contra;
+
+    // KPIs
+    const k = $("jKpis"); k.innerHTML = "";
+    const kpi = (n, sub, lbl, cls, alerta) => {
+      const b = document.createElement("button"); b.type = "button";
+      b.className = "kpi " + (cls || "") + (alerta !== undefined && f.alerta === alerta ? " active" : "");
+      b.innerHTML = `<div class="kpiNum">${num(n)}</div><div class="kpiPct">${sub}</div><div class="kpiLbl">${esc(lbl)}</div>`;
+      if (alerta !== undefined) b.addEventListener("click", () => { $("jfAlerta").value = f.alerta === alerta ? "" : alerta; S.shown = 200; render(); });
+      else b.style.cursor = "default";
+      k.appendChild(b);
+    };
+    kpi(tareas, "tareas", "Tareas del período");
+    kpi(inval, pctTxt(inval, tareas), "Invalidadas");
+    kpi(base.length, pctTxt(base.length, inval) + " de invalidadas", "Justificadas", "", "");
+    kpi(contra, pctTxt(contra, base.length) + " de justificadas", "Contradicciones", contra ? "bad" : "ok", "CONTRADICCION");
+    kpi(senal, pctTxt(senal, base.length) + " de justificadas", "Solo señales", senal ? "warn" : "ok", "SENAL");
+    kpi(base.length - conAlerta, pctTxt(base.length - conAlerta, base.length), "Sin alertas", "ok", "NONE");
+
+    // Chequeos
+    const ch = $("jChecks"); ch.innerHTML = "";
+    CHECKS.forEach(([key, t, d]) => {
+      const n = base.filter(c => c.alertas.indexOf(key) > -1).length;
+      const b = document.createElement("button"); b.type = "button";
+      b.className = "jCheck" + (f.alerta === key ? " active" : "");
+      const fuerte = FUERTES.indexOf(key) > -1;
+      b.innerHTML = `<div class="lv ${fuerte ? "c" : "s"}">${fuerte ? "Contradicción" : "Señal"}</div><div class="n ${n ? (fuerte ? "" : "s") : "zero"}">${num(n)}</div><div class="t">${esc(t)}</div><div class="d">${esc(d)}</div>`;
+      b.addEventListener("click", () => { $("jfAlerta").value = f.alerta === key ? "" : key; S.shown = 200; render(); });
+      ch.appendChild(b);
+    });
+
+    // Ranking promotores
+    const alertasProm = new Map(), motProm = new Map();
+    base.forEach(c => {
+      if (nivel(c) === "CONTRADICCION") alertasProm.set(c.prom, (alertasProm.get(c.prom) || 0) + 1);
+      let m = motProm.get(c.prom); if (!m){ m = new Map(); motProm.set(c.prom, m); }
+      m.set(c.motivo, (m.get(c.motivo) || 0) + 1);
+    });
+    const filas = promStats.map(([p, s]) => ({ p, ...s, pct: pct(s.just, s.tareas), al: alertasProm.get(p) || 0 }))
+      .filter(r => r.tareas >= 100)
+      .sort((a, b) => b.pct - a.pct || b.just - a.just);
+    const pcts = filas.map(r => r.pct).sort((a, b) => a - b);
+    const mediana = pcts.length ? pcts[Math.floor(pcts.length / 2)] : 0;
+    const top = p => { const m = motProm.get(p); if (!m) return ""; return [...m.entries()].sort((a, b) => b[1] - a[1])[0][0]; };
+    const rp = $("jRankProm");
+    rp.innerHTML = `<thead><tr><th>Promotor</th><th>Distri</th><th>Supervisor</th><th class="num">Tareas</th><th class="num">Justif.</th><th class="num">% justif.</th><th class="num">Contradic.</th><th>Motivo principal</th></tr></thead><tbody>` +
+      filas.map(r => `<tr class="click" data-prom="${esc(r.p)}"><td>${esc(r.p)}</td><td>${esc(r.distri)}</td><td>${esc(r.sup)}</td><td class="num">${num(r.tareas)}</td><td class="num">${num(r.just)}</td><td class="num ${r.pct >= mediana * 2 && r.just >= 10 ? "hi" : ""}">${r.pct.toFixed(1).replace(".", ",")}%</td><td class="num ${r.al ? "hi" : ""}">${num(r.al)}</td><td>${esc(top(r.p))}</td></tr>`).join("") +
+      `</tbody>` + (filas.length ? `<caption style="caption-side:bottom;text-align:left;padding:8px 10px;font-size:11px;color:#94A3B8;font-weight:700">Mediana: ${mediana.toFixed(1).replace(".", ",")}% · en rojo, el doble de la mediana o más · solo promotores con 100+ tareas</caption>` : "");
+    rp.querySelectorAll("tr.click").forEach(tr => tr.addEventListener("click", () => {
+      $("jfProm").value = $("jfProm").value === tr.dataset.prom ? "" : tr.dataset.prom; S.shown = 200; render();
+    }));
+
+    // Motivos
+    const mot = new Map();
+    base.forEach(c => { const m = mot.get(c.motivo) || { n: 0, al: 0 }; m.n++; if (nivel(c) === "CONTRADICCION") m.al++; mot.set(c.motivo, m); });
+    const rm = $("jRankMot");
+    rm.innerHTML = `<thead><tr><th>Motivo</th><th class="num">Casos</th><th class="num">%</th><th class="num">Contradic.</th></tr></thead><tbody>` +
+      [...mot.entries()].sort((a, b) => b[1].n - a[1].n).map(([m, v]) =>
+        `<tr class="click" data-mot="${esc(m)}"><td>${esc(m)}</td><td class="num">${num(v.n)}</td><td class="num">${pctTxt(v.n, base.length)}</td><td class="num ${v.al ? "hi" : ""}">${num(v.al)}</td></tr>`).join("") + `</tbody>`;
+    rm.querySelectorAll("tr.click").forEach(tr => tr.addEventListener("click", () => {
+      $("jfMotivo").value = $("jfMotivo").value === tr.dataset.mot ? "" : tr.dataset.mot; S.shown = 200; render();
+    }));
+
+    renderCasos();
+  }
+
+  function fotoDe(c){
+    const rows = typeof window.GP_getRawRows === "function" ? window.GP_getRawRows() : [];
+    if (!rows.length || !c.tareaId) return "";
+    if (!S._fotoIdx || S._fotoIdxSrc !== rows){
+      S._fotoIdx = new Map(); S._fotoIdxSrc = rows;
+      rows.forEach(r => { if (r.idTarea && r.foto) S._fotoIdx.set(String(r.idTarea).toLowerCase(), r.foto); });
+    }
+    return S._fotoIdx.get(c.tareaId.toLowerCase()) || "";
+  }
+
+  function renderCasos(){
+    const lista = casosFiltrados();
+    $("jCasosMeta").textContent = `${num(lista.length)} casos · primero las contradicciones`;
+    const vis = lista.slice(0, S.shown);
+    $("jCases").innerHTML = `<thead><tr><th>Día</th><th>Distri</th><th>Supervisor</th><th>Promotor</th><th>POC</th><th>Tarea</th><th>Motivo</th><th>Alertas</th><th>Foto</th></tr></thead><tbody>` +
+      vis.map(c => {
+        const foto = fotoDe(c);
+        return `<tr><td>${fmtDia(c.dia)}</td><td>${esc(c.distri)}</td><td>${esc(c.sup)}</td><td>${esc(c.prom)}</td><td>${esc(c.cli)}</td><td class="jTarea">${esc(c.tarea)}</td><td>${esc(c.motivo)}</td><td>${c.alertas.map(a => `<span class="jTag ${FUERTES.indexOf(a) > -1 ? "" : "s"}">${esc(CHECK_LBL[a])}</span>`).join("") || "—"}</td><td>${foto ? `<a href="${esc(foto)}" target="_blank" rel="noopener">Ver</a>` : ""}</td></tr>`;
+      }).join("") + `</tbody>`;
+    $("jMore").classList.toggle("hidden", lista.length <= S.shown);
+  }
+
+  // ---------- Export ----------
+  function filaExport(c){
+    return {
+      "DIA": fmtDia(c.dia), "REGION": c.region, "DISTRIBUIDOR": c.distri, "JDV": c.jdv, "SUPERVISOR": c.sup,
+      "PROMOTOR": c.prom, "POC ID": c.cli, "PILAR": c.pilar, "TAREA": c.tarea, "MOTIVO JUSTIFICACION": c.motivo,
+      "NIVEL": nivel(c) === "CONTRADICCION" ? "Contradicción" : (nivel(c) === "SENAL" ? "Señal" : ""),
+      "ALERTAS": c.alertas.map(a => CHECK_LBL[a]).join(" | "),
+      "LINK IMAGEN": fotoDe(c), "TAREA ID": c.tareaId
+    };
+  }
+  const hoy = () => { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0"); };
+
+  function exportarFiltrados(){
+    const lista = casosFiltrados();
+    if (!lista.length){ alert("No hay casos con los filtros actuales."); return; }
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(lista.map(filaExport)), "Justificadas");
+    XLSX.writeFile(wb, `auditoria-justificadas-${hoy()}.xlsx`);
+  }
+
+  function exportarPorSupervisor(){
+    const f = filtros();
+    const lista = S.casos.filter(c => pasaBase(c, f) && c.alertas.length);
+    if (!lista.length){ alert("No hay casos con alerta para exportar."); return; }
+    const porSup = new Map();
+    lista.forEach(c => { const k = (c.distri + " - " + (c.sup || "SIN SUPERVISOR")); if (!porSup.has(k)) porSup.set(k, []); porSup.get(k).push(c); });
+    const wb = XLSX.utils.book_new();
+    const resumen = [...porSup.entries()].sort((a, b) => b[1].length - a[1].length).map(([k, arr]) => ({
+      "DISTRIBUIDOR - SUPERVISOR": k, "CASOS CON ALERTA": arr.length,
+      "CONTRADICCIONES": arr.filter(c => nivel(c) === "CONTRADICCION").length,
+      "PROMOTORES": new Set(arr.map(c => c.prom)).size
+    }));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resumen), "Resumen");
+    const usados = new Set(["Resumen"]);
+    [...porSup.entries()].sort((a, b) => a[0].localeCompare(b[0], "es")).forEach(([k, arr]) => {
+      let nombre = k.replace(/[\\\/\?\*\[\]:]/g, " ").slice(0, 31).trim(); let i = 2;
+      while (usados.has(nombre)) nombre = (k.slice(0, 27) + " " + (i++)).trim();
+      usados.add(nombre);
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(arr.map(filaExport)), nombre);
+    });
+    XLSX.writeFile(wb, `justificadas-por-supervisor-${hoy()}.xlsx`);
+  }
+
+  // ---------- Eventos ----------
+  document.addEventListener("DOMContentLoaded", init);
+  if (document.readyState !== "loading") init();
+  let iniciado = false;
+  function init(){
+    if (iniciado || !$("jFile")) return; iniciado = true;
+    $("jFile").addEventListener("change", e => { cargarArchivos(e.target.files); e.target.value = ""; });
+    ["jfDistri", "jfSup", "jfProm", "jfMotivo", "jfAlerta"].forEach(id => $(id).addEventListener("change", () => {
+      if (id === "jfDistri" || id === "jfSup") llenarFiltros();
+      S.shown = 200; render();
+    }));
+    $("jClear").addEventListener("click", () => {
+      ["jfDistri", "jfSup", "jfProm", "jfMotivo", "jfAlerta"].forEach(id => $(id).value = "");
+      llenarFiltros(); S.shown = 200; render();
+    });
+    $("jMore").addEventListener("click", () => { S.shown += 200; renderCasos(); });
+    $("jExport").addEventListener("click", exportarFiltrados);
+    $("jExportSup").addEventListener("click", exportarPorSupervisor);
+  }
+})();
+</script>
+
 </body>
 </html>
