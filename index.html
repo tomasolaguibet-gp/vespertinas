@@ -1313,7 +1313,10 @@ input[type="date"], input[type="text"], select{
 
         <div class="field fileField">
           <input id="file" type="file" accept=".xlsx,.xls,.csv" multiple />
-          <label class="btn dark fileButton" for="file">Cargar Excel</label>
+          <div style="display:flex;gap:6px;align-items:center">
+            <label class="btn dark fileButton" for="file" id="fileLabel" title="Podés elegir varios Excel juntos (Ctrl + clic) o ir sumándolos de a uno">Cargar Excel</label>
+            <button id="fileClear" class="btn ghost" type="button" title="Quitar los archivos elegidos" style="display:none;padding:0 12px">✕</button>
+          </div>
           <div class="hint" id="fileHint">-</div>
         </div>
 
@@ -2426,15 +2429,7 @@ input[type="date"], input[type="text"], select{
         const t = norm(r.tarea);
         for (const p of palabras){ if (t.indexOf(p) === -1) return false; }
       }
-      if (revision !== "all"){
-        const yaRevisada = categorizations.has(r.caseKey);
-        if (revision === "pendiente" && yaRevisada) return false;
-        if (revision === "revisada" && !yaRevisada) return false;
-        if (revision.indexOf("cat:") === 0){
-          const c = categorizations.get(r.caseKey);
-          if (!c || c.category !== revision.slice(4)) return false;
-        }
-      }
+      if (!pasaRevision(r, revision)) return false;
       // Always require photo url
       if (!r.foto) return false;
       return true;
@@ -2680,6 +2675,16 @@ input[type="date"], input[type="text"], select{
     });
   }
 
+  // Filtro "Revisión" (Sin revisar / Ya revisadas / por categoría).
+  function pasaRevision(r, revision){
+    if (!revision || revision === "all") return true;
+    const c = categorizations.get(r.caseKey);
+    if (revision === "pendiente") return !c;
+    if (revision === "revisada") return !!c;
+    if (revision.indexOf("cat:") === 0) return !!c && c.category === revision.slice(4);
+    return true;
+  }
+
   function renderRanking(rows){
     // Ranking computed on invalid rows within CURRENT filtered results (or broader?) — for machete, better use filtered universe but invalid-only.
     const base = rawRows.filter(r=>{
@@ -2699,6 +2704,11 @@ input[type="date"], input[type="text"], select{
       if (st.pilar && norm(r.pilar) !== norm(st.pilar)) return false;
       if (st.variable && norm(r.variable) !== norm(st.variable)) return false;
       if (st.tarea && norm(r.tarea) !== norm(st.tarea)) return false;
+      // El ranking cuenta lo mismo que vas a ver al hacer click:
+      // respeta Revisión (ej. "Sin revisar") y Ejecución.
+      if (!pasaRevision(r, fRevision ? fRevision.value : "all")) return false;
+      const comp = fCompletada ? fCompletada.value : "all";
+      if (comp !== "all" && String(r.completada) !== comp) return false;
       return true;
     });
 
@@ -2753,6 +2763,11 @@ input[type="date"], input[type="text"], select{
       if (st.pilar && norm(r.pilar) !== norm(st.pilar)) return false;
       if (st.variable && norm(r.variable) !== norm(st.variable)) return false;
       if (st.tarea && norm(r.tarea) !== norm(st.tarea)) return false;
+      // El ranking cuenta lo mismo que vas a ver al hacer click:
+      // respeta Revisión (ej. "Sin revisar") y Ejecución.
+      if (!pasaRevision(r, fRevision ? fRevision.value : "all")) return false;
+      const comp = fCompletada ? fCompletada.value : "all";
+      if (comp !== "all" && String(r.completada) !== comp) return false;
       return true;
     });
 
@@ -3773,6 +3788,11 @@ input[type="date"], input[type="text"], select{
     viewGaleria.classList.toggle("hidden", v !== "galeria");
     viewEvidenciar.classList.toggle("hidden", v !== "evidenciar");
     document.getElementById("view_justif")?.classList.toggle("hidden", v !== "justif");
+    // En la Auditoría, los filtros de fotos no aplican: se ocultan para no confundir.
+    [fValidada, fRevision, fCompletada, fCanal, fPromotor, fSupervisor, fPoc, fDesde, fHasta]
+      .filter(Boolean).forEach(x => { const c = x.closest(".field"); if (c) c.style.display = v === "justif" ? "none" : ""; });
+    [btnClear, btnUndo, btnMore, btnApply, btnViewCategorized].filter(Boolean)
+      .forEach(x => x.style.display = v === "justif" ? "none" : "");
     mainLayout.classList.toggle("evidenceMode", v === "evidenciar" || v === "justif");
     if (v === "evidenciar") renderEvidenceView();
     applyAndRender(true);
@@ -3820,15 +3840,31 @@ input[type="date"], input[type="text"], select{
   }
 
   // --- Excel load
+  // Los archivos se ACUMULAN: cada vez que elegís, se suman a la lista
+  // (sirve para Excel en carpetas distintas o elegidos de a uno).
+  let archivosElegidos = [];
+  const fileLabel = el("fileLabel");
+  const fileClear = el("fileClear");
+  function actualizarArchivosUI(){
+    const n = archivosElegidos.length;
+    fileLabel.textContent = n ? `Excel elegidos: ${n} · sumar otro` : "Cargar Excel";
+    fileLabel.title = n ? archivosElegidos.map(f => f.name).join("\n") : "Podés elegir varios Excel juntos (Ctrl + clic) o ir sumándolos de a uno";
+    fileClear.style.display = n ? "" : "none";
+    fileHint.textContent = n ? archivosElegidos.map(f => f.name).join(", ") : "—";
+    btnStart.disabled = !n;
+  }
   fileInput.addEventListener("change", ()=>{
-    const fs = [...(fileInput.files || [])];
-    if (!fs.length){
-      fileHint.textContent = "—";
-      btnStart.disabled = true;
-      return;
-    }
-    fileHint.textContent = fs.length === 1 ? fs[0].name : `${fs.length} archivos`;
-    btnStart.disabled = false;
+    [...(fileInput.files || [])].forEach(f => {
+      if (!archivosElegidos.some(a => a.name === f.name && a.size === f.size && a.lastModified === f.lastModified)) archivosElegidos.push(f);
+    });
+    fileInput.value = "";      // permite volver a elegir el mismo archivo
+    actualizarArchivosUI();
+    if (archivosElegidos.length) setStatus(`${archivosElegidos.length} archivo(s) elegidos. Tocá MOSTRAR INFO.`);
+  });
+  fileClear.addEventListener("click", ()=>{
+    archivosElegidos = [];
+    actualizarArchivosUI();
+    setStatus("Esperando Excel");
   });
 
   // Muestra en el selector cuántas fotos hay de cada distribuidor cargado.
@@ -3878,7 +3914,7 @@ input[type="date"], input[type="text"], select{
   }
 
   btnStart.addEventListener("click", async ()=>{
-    const archivos = [...(fileInput.files || [])];
+    const archivos = archivosElegidos.slice();
     if (!archivos.length) return;
     try{
       let json = [];
@@ -3891,6 +3927,20 @@ input[type="date"], input[type="text"], select{
         for (const fila of filas) json.push(fila);
       }
       json.forEach(completarSucursal);
+
+      // Si se cargan planas que se superponen en días, la misma tarea vendría
+      // dos veces. Nos quedamos con una sola por ID Tarea: la del archivo
+      // elegido último (la más nueva, que trae revalidaciones del país).
+      const porId = new Map();
+      const sinId = [];
+      json.forEach(f => {
+        const id = asText(f["ID Tarea"] ?? f["IdTarea"] ?? f["id tarea"]);
+        if (!id){ sinId.push(f); return; }
+        porId.set(id, f);
+      });
+      const duplicadas = json.length - sinId.length - porId.size;
+      json = sinId.concat([...porId.values()]);
+      if (duplicadas) console.warn(duplicadas + " tareas repetidas entre archivos quedaron una sola vez.");
 
       // Agrupamos por distribuidor: cada uno se revisa por separado y se
       // cambia desde el selector DISTRIBUIDOR TICKET sin volver a cargar.
